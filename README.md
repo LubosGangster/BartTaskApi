@@ -1,4 +1,4 @@
-Backend API, ktoré beži na frameworku Lumen (8.2.4) (Laravel Components ^8.0).
+Backend API, ktoré beži na frameworku Lumen (8.2.4) (Laravel Components ^8.0). Pred spustením je potrebné nainštalovať všetky package, príkazom "composer install".
 Spúšťa sa príkazom "php -S localhost:{ľubovoľný dostupný port napr. 8000} public/index.php" v koreňovom priečinku.
 Keďže nebolo dovoléne použiť databázu, backend API využíva suborový systém na uloženie potrebných dát v priečinku storage.
 
