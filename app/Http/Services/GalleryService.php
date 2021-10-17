@@ -14,7 +14,17 @@ use Illuminate\Support\Facades\Storage;
 class GalleryService
 {
     public function addGallery($name){
-        $galleries = $this->allGalleries();
+        try {
+            $galleries = $this->allGalleries();
+        } catch (\Exception $e){
+            $newGallery = new Gallery();
+            $newGallery->name = $name;
+            $newGallery->path = urlencode($name);
+
+            Storage::disk('local')->put("galleries/{$newGallery->path}.json", json_encode($newGallery));
+            return $newGallery;
+        }
+
         foreach ($galleries as $gallery){
             if (strcmp($gallery["name"], $name) == 0){
                 throw new ErrorException("The gallery already exists");
