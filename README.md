@@ -16,3 +16,13 @@ Dokumentácia k API:
 -vymazanie obrázka - DELETE http://localhost:8000/api/gallery/{fullPathOfImage} ... vymazanie konkrétneho obrázka, nutné použiť plnú cestu (čiže aj galériu)
 
 -generovanie daného obrázka - GET http://localhost:8000/api/images/{width}x{height}/{fullPathOfImage}
+
+BONUSOVÁ ÚLOHA
+
+- endpoint na upload fotky s autentifikáciou - POST http://localhost:8000/api/gallery/auth/{path} ... vo form data je potrebné nahrať daný obrázok s key - "image"
+
+- ak je testovaci user prihláseny, uloží fotku na disk do priečinka storage/app/auth/images/{path}/{id_usera} 
+
+- ak nie je prihlásený, API vráti json v ktorom je link na prihlásenie
+
+- obrázky ktoré su uploadnuté prihláseným používateľom nie su zahrnuté v ostatných endpointoch (vylistovanie a pod.)

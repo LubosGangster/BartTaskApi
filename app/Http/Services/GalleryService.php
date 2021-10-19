@@ -7,7 +7,6 @@ namespace App\Http\Services;
 use App\Models\Gallery;
 use Carbon\Carbon;
 use ErrorException;
-use http\Env\Response;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
@@ -136,20 +135,24 @@ class GalleryService
         }
     }
 
-    public function uploadImage($file, $path){
+    public function uploadImage($file, $path, $id){
         if (!$file || !$file->isValid()){
             throw new ErrorException("File is not valid");
         }
-
-        $filepath = storage_path('app/images/'.$path);
-        $filename = $file->getClientOriginalName();
-
+        if ($id!=null) {
+            $path = $path . '/' . $id;
+            $filepath = storage_path('app/auth/images/' . $path);
+            $filename = $file->getClientOriginalName();
+        } else {
+            $filepath = storage_path('app/images/' . $path);
+            $filename = $file->getClientOriginalName();
+        }
         $file->move($filepath, $filename);
         $name = pathinfo($filename, PATHINFO_FILENAME);
 
         Storage::disk('local')->put("images/{$path}/{$name}.json", json_encode([
             'path' => $file->getClientOriginalName(),
-            'fullpath' => "${path}/{$filename}",
+            'fullpath' => "${path}/${filename}",
             'name' => $name,
             'modified' => Carbon::now()
         ]));
@@ -157,7 +160,7 @@ class GalleryService
         $uploaded = array();
         array_push($uploaded, [
             'path' => $file->getClientOriginalName(),
-            'fullpath' => "${path}/{$filename}",
+            'fullpath' => "${path}/${filename}",
             'name' => $name,
             'modified' => Carbon::now()
         ]);

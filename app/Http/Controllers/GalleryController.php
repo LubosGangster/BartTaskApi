@@ -5,20 +5,27 @@ namespace App\Http\Controllers;
 use App\Http\Requests\GalleryStoreRequest;
 use App\Http\Requests\UploadImageRequest;
 use App\Http\Services\GalleryService;
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use GuzzleHttp\Exception\GuzzleException;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 
 class GalleryController extends Controller
 {
     private static $galleryStoreRules;
     private static $uploadImageRules;
     private static $galleryService;
+    private static $client;
     public function __construct()
     {
         self::$galleryStoreRules = new GalleryStoreRequest();
         self::$uploadImageRules = new UploadImageRequest();
         self::$galleryService = new GalleryService();
+        self::$client = new Client([ 'base_uri' => 'https://graph.facebook.com' ]);
     }
+
 
     public function index(){
         try {
@@ -62,7 +69,80 @@ class GalleryController extends Controller
         }
 
         try {
-            $uploaded = self::$galleryService->uploadImage($request->file('image'), $path);
+            $uploaded = self::$galleryService->uploadImage($request->file('image'), $path, null);
+        } catch (\ErrorException $e) {
+            return response()->json([
+                'error' => [
+                    'message' => $e->getMessage()
+                ]
+            ], 400);
+        }
+
+        return response()->json([
+            'uploaded' => $uploaded
+        ], 200);
+    }
+
+    public function updateAuth(Request $request, $path){
+        //authentification
+        try {
+            $pathToken = storage_path('app/token');
+            $files = File::allFiles($pathToken);
+            if (count($files) != 1){
+                throw new \Exception();
+            } else {
+                foreach ($files as $file){
+                    $token = json_decode(file_get_contents($file->getRealPath()), true);
+                }
+            }
+        } catch (\Exception $e){
+            return response()->json([
+                "error" => [
+                    "message" => "You are not authenticated. Authenticate yourself on http://localhost:8000/api/facebook"
+                ]
+            ], 401);
+        }
+
+        try {
+            $response = self::$client->request('GET', '/me', [
+                'query' => [
+                    'access_token' => $token["token"]
+                ]
+            ]);
+
+            $body = $response->getBody();
+            $data = json_decode($body);
+
+        } catch (GuzzleException $e) {
+            return response()->json([
+                "error" => [
+                    "message" => "You are not authenticated. Authenticate yourself on http://localhost:8000/api/facebook"
+                ]
+            ], 401);
+        }
+
+        try {
+            self::$galleryService->controlPath($path);
+        } catch (\ErrorException $e) {
+            return response()->json([
+                'error' => [
+                    'message' => $e->getMessage()
+                ]
+            ], 404);
+        }
+
+        try {
+            $this->validate($request, self::$uploadImageRules->rules());
+        } catch (ValidationException $e) {
+            return response()->json([
+                'error' => [
+                    'message' => $e->getMessage()
+                ]
+            ], 400);
+        }
+
+        try {
+            $uploaded = self::$galleryService->uploadImage($request->file('image'), $path, $data->id);
         } catch (\ErrorException $e) {
             return response()->json([
                 'error' => [
