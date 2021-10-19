@@ -80,9 +80,9 @@ $app->configure('app');
 //     App\Http\Middleware\ExampleMiddleware::class,
 // ]);
 
-$app->routeMiddleware([
-    'facebook' => App\Http\Middleware\ExampleMiddleware::class,
-]);
+//$app->routeMiddleware([
+//    'facebook' => App\Http\Middleware\ExampleMiddleware::class,
+//]);
 
 /*
 |--------------------------------------------------------------------------
@@ -97,18 +97,6 @@ $app->routeMiddleware([
 $app->register(Intervention\Image\ImageServiceProvider::class);
 $app->register(App\Providers\AppServiceProvider::class);
 $app->register(App\Providers\AuthServiceProvider::class);
-
-$app->middleware([
-    \Illuminate\Session\Middleware\StartSession::class,
-]);
-
-$app->singleton(Illuminate\Session\SessionManager::class, function () use ($app) {
-    return $app->loadComponent('session', Illuminate\Session\SessionServiceProvider::class, 'session');
-});
-
-$app->singleton('session.store', function () use ($app) {
-    return $app->loadComponent('session', Illuminate\Session\SessionServiceProvider::class, 'session.store');
-});
 
 /*
 |--------------------------------------------------------------------------
