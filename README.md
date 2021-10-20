@@ -25,4 +25,4 @@ BONUSOVÁ ÚLOHA
 
 - ak nie je prihlásený, API vráti json v ktorom je link na prihlásenie
 
-- obrázky ktoré su uploadnuté prihláseným používateľom nie su zahrnuté v ostatných endpointoch (vylistovanie a pod.)
+- obrázky ktoré su uploadnuté prihláseným používateľom nie su zahrnuté v niektorých endpointoch (vymazanie obrázka a generovanie)
