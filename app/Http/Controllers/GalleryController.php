@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\GalleryStoreRequest;
 use App\Http\Requests\UploadImageRequest;
 use App\Http\Services\GalleryService;
+use App\Models\GalleryTitleImage;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use GuzzleHttp\Exception\GuzzleException;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 
 class GalleryController extends Controller
@@ -27,27 +27,72 @@ class GalleryController extends Controller
     }
 
 
-    public function index(){
+    public function index(Request $request){
         try {
             $galleries = self::$galleryService->allGalleries();
         } catch (\Exception $e){
-            return response()->json("Gallery list is empty.", 200);
+            return response()->json([
+                'count' => 0,
+                'galleries' => []
+            ], 200);
         }
 
         foreach ($galleries as $index=>$gallery){
             $arr = self::$galleryService->findImagesIndex($gallery["path"]);
             if ($arr != null){
-                $galleries[$index]["image"] = $arr;
+                $temp = new GalleryTitleImage();
+                $temp->path = $galleries[$index]["path"];
+                $temp->image = $arr;
+                $temp->name = $galleries[$index]["name"];
+                $galleries[$index] = $temp;
+            }
+        }
+
+        //filter paginate
+        if (ctype_digit($request->get('limit')) && $request->get('limit') != null && $request->get('limit') < count($galleries) && $request->get('limit')>0){
+            $allPage = (int)ceil(count($galleries)/$request->get('limit'));
+            if (ctype_digit($request->get('page')) &&$request->get('page') != null && $request->get('page') <= $allPage && $request->get('page') > 0){
+                $filterGalleries = array();
+                $downBorder = $request->get('limit')*($request->get('page') - 1);
+                $upBorder = $downBorder + $request->get('limit') - 1;
+                foreach ($galleries as $index=>$gallery){
+                    if ($index >= $downBorder && $index <= $upBorder){
+                        array_push($filterGalleries, $gallery);
+                    }
+                }
+                return response()->json([
+                    'total_count' => count($galleries),
+                    'count' => count($filterGalleries),
+                    'limit' => (int)$request->get('limit'),
+                    'page' => (int)$request->get('page'),
+                    'galleries' => $filterGalleries
+                ], 200);
+            } else {
+                //default 1
+                $filterGalleries = array();
+                foreach ($galleries as $index=>$gallery){
+                    if ($index<$request->get('limit')){
+                        array_push($filterGalleries, $gallery);
+                    }
+                }
+                return response()->json([
+                    'total_count' => count($galleries),
+                    'count' => count($filterGalleries),
+                    'limit' => (int)$request->get('limit'),
+                    'page' => 1,
+                    'galleries' => $filterGalleries
+                ], 200);
             }
         }
 
         return response()->json([
-            'count' => count($galleries),
+            'total_count' => count($galleries),
             'galleries' => $galleries
         ], 200);
     }
 
     public function update(Request $request, $path){
+        $id = $request->get('idOfUser');
         try {
             self::$galleryService->controlPath($path);
         } catch (\ErrorException $e) {
@@ -69,80 +114,7 @@ class GalleryController extends Controller
         }
 
         try {
-            $uploaded = self::$galleryService->uploadImage($request->file('image'), $path, null);
-        } catch (\ErrorException $e) {
-            return response()->json([
-                'error' => [
-                    'message' => $e->getMessage()
-                ]
-            ], 400);
-        }
-
-        return response()->json([
-            'uploaded' => $uploaded
-        ], 200);
-    }
-
-    public function updateAuth(Request $request, $path){
-        //authentification
-        try {
-            $pathToken = storage_path('app/token');
-            $files = File::allFiles($pathToken);
-            if (count($files) != 1){
-                throw new \Exception();
-            } else {
-                foreach ($files as $file){
-                    $token = json_decode(file_get_contents($file->getRealPath()), true);
-                }
-            }
-        } catch (\Exception $e){
-            return response()->json([
-                "error" => [
-                    "message" => "You are not authenticated. Authenticate yourself on http://localhost:8000/api/facebook"
-                ]
-            ], 401);
-        }
-
-        try {
-            $response = self::$client->request('GET', '/me', [
-                'query' => [
-                    'access_token' => $token["token"]
-                ]
-            ]);
-
-            $body = $response->getBody();
-            $data = json_decode($body);
-
-        } catch (GuzzleException $e) {
-            return response()->json([
-                "error" => [
-                    "message" => "You are not authenticated. Authenticate yourself on http://localhost:8000/api/facebook"
-                ]
-            ], 401);
-        }
-
-        try {
-            self::$galleryService->controlPath($path);
-        } catch (\ErrorException $e) {
-            return response()->json([
-                'error' => [
-                    'message' => $e->getMessage()
-                ]
-            ], 404);
-        }
-
-        try {
-            $this->validate($request, self::$uploadImageRules->rules());
-        } catch (ValidationException $e) {
-            return response()->json([
-                'error' => [
-                    'message' => $e->getMessage()
-                ]
-            ], 400);
-        }
-
-        try {
-            $uploaded = self::$galleryService->uploadImage($request->file('image'), $path, $data->id);
+            $uploaded = self::$galleryService->uploadImage($request->file('image'), $path, $id);
         } catch (\ErrorException $e) {
             return response()->json([
                 'error' => [
@@ -184,7 +156,7 @@ class GalleryController extends Controller
             ], 409);
         }
 
-        return response()->json($newGallery, 200);
+        return response()->json($newGallery, 201);
     }
 
     public function show($path){
@@ -227,13 +199,17 @@ class GalleryController extends Controller
         }
 
         self::$galleryService->deleteGallery($path);
-        return response()->json("Gallery was deleted", 200);
+        return response()->json([
+            "message" => "Gallery was deleted"
+        ], 200);
     }
 
     public function deleteImage($gallery, $image){
         try {
             self::$galleryService->deleteImage($gallery, $image);
-            return response()->json("Image was deleted", 200);
+            return response()->json([
+                "message" => "Image was deleted"
+            ], 200);
         } catch (\ErrorException $e) {
             return response()->json([
                 'error' => [

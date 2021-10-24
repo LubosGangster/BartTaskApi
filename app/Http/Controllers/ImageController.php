@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Services\GalleryService;
 use Illuminate\Support\Facades\Response;
 use Intervention\Image\Facades\Image;
+use Intervention\Image\ImageManagerStatic;
 use Symfony\Component\ErrorHandler\Error\FatalError;
 
 
@@ -74,28 +75,32 @@ class ImageController extends Controller
 
         foreach ($images as $img){
             if (strcmp($img->getFileName(), $image) == 0){
-                $imgIntervention = Image::make(storage_path("app/images/${gallery}/${image}"));
+                $imgCached = ImageManagerStatic::cache(function($imgIntervention) use ($w, $h, $gallery, $image){
+                    $imgIntervention->make(storage_path("app/images/${gallery}/${image}"));
+                    try {
+                        if ($w == 0 && $h != 0) {
+                            $imgIntervention->resize(null, $h, function ($constraint) {
+                                $constraint->aspectRatio();
+                            });
+                        } elseif ($w != 0 && $h == 0){
+                            $imgIntervention->resize($w, null, function ($constraint) {
+                                $constraint->aspectRatio();
+                            });
+                        } elseif ($w != 0 && $h != 0){
+                            $imgIntervention->fit($w, $h);
+                        }
 
-                try {
-                    if ($w == 0 && $h != 0) {
-                        $imgIntervention->resize(null, $h, function ($constraint) {
-                            $constraint->aspectRatio();
-                        });
-                    } elseif ($w != 0 && $h == 0){
-                        $imgIntervention->resize($w, null, function ($constraint) {
-                            $constraint->aspectRatio();
-                        });
-                    } elseif ($w != 0 && $h != 0){
-                        $imgIntervention->resize($w, $h);
+                    } catch (FatalError $e){
+                        return response()->json([
+                            "error" => [
+                                "message" => "The photo preview can't be generated."
+                            ]
+                        ], 500);
                     }
-                } catch (FatalError $e){
-                    return response()->json([
-                        "error" => [
-                            "message" => "The photo preview can't be generated."
-                        ]
-                    ], 500);
-                }
-                return Response::make($imgIntervention->encode('jpg'), 200, ['Content-Type' => 'image/jpeg']);
+                    return $imgIntervention;
+                });
+
+                return Response::make(ImageManagerStatic::make($imgCached)->encode('jpg'), 200, ['Content-Type' => 'image/jpeg']);
             }
         }
 

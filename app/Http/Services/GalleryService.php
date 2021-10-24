@@ -6,6 +6,7 @@ namespace App\Http\Services;
 
 use App\Models\Gallery;
 use Carbon\Carbon;
+use DateTime;
 use ErrorException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +19,7 @@ class GalleryService
         } catch (\Exception $e){
             $newGallery = new Gallery();
             $newGallery->name = $name;
-            $newGallery->path = urlencode($name);
+            $newGallery->path = rawurlencode($name);
 
             Storage::disk('local')->put("galleries/{$newGallery->path}.json", json_encode($newGallery));
             return $newGallery;
@@ -31,7 +32,7 @@ class GalleryService
         }
         $newGallery = new Gallery();
         $newGallery->name = $name;
-        $newGallery->path = urlencode($name);
+        $newGallery->path = rawurlencode($name);
 
         Storage::disk('local')->put("galleries/{$newGallery->path}.json", json_encode($newGallery));
         return $newGallery;
@@ -79,6 +80,17 @@ class GalleryService
             }
         }
 
+        usort($images, function($a, $b) {
+            $ad = new DateTime($a['modified']);
+            $bd = new DateTime($b['modified']);
+
+            if ($ad == $bd) {
+                return 0;
+            }
+
+            return $ad < $bd ? 1 : -1;
+        });
+
         return $images;
     }
 
@@ -109,11 +121,20 @@ class GalleryService
                 if(strcmp($file->getExtension(), "json") == 0){
                     $json = json_decode(file_get_contents($file->getRealPath()), true);
                     array_push($images, $json);
-                    break;
                 }
             }
 
-            return $images;
+            usort($images, function($a, $b) {
+                $ad = new DateTime($a['modified']);
+                $bd = new DateTime($b['modified']);
+
+                if ($ad == $bd) {
+                    return 0;
+                }
+
+                return $ad < $bd ? 1 : -1;
+            });
+            return $images[0];
         } else {
             return null;
         }
@@ -139,30 +160,26 @@ class GalleryService
         if (!$file || !$file->isValid()){
             throw new ErrorException("File is not valid");
         }
-        if ($id!=null) {
-            $path = $path . '/' . $id;
-            $filepath = storage_path('app/auth/images/' . $path);
-            $filename = $file->getClientOriginalName();
-        } else {
-            $filepath = storage_path('app/images/' . $path);
-            $filename = $file->getClientOriginalName();
-        }
-        $file->move($filepath, $filename);
-        $name = pathinfo($filename, PATHINFO_FILENAME);
 
-        Storage::disk('local')->put("images/{$path}/{$name}.json", json_encode([
-            'path' => $file->getClientOriginalName(),
+        $filepath = storage_path('app/images/' . $path);
+        $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME).'-'.$id.'.'.$file->getClientOriginalExtension();
+
+        $file->move($filepath, $filename);
+        $name = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+
+        Storage::disk('local')->put("images/${path}/${name}-${id}.json", json_encode([
+            'path' => $filename,
             'fullpath' => "${path}/${filename}",
             'name' => $name,
-            'modified' => Carbon::now()
+            'modified' => Carbon::now()->addHours(2)
         ]));
 
         $uploaded = array();
         array_push($uploaded, [
-            'path' => $file->getClientOriginalName(),
+            'path' => $filename,
             'fullpath' => "${path}/${filename}",
             'name' => $name,
-            'modified' => Carbon::now()
+            'modified' => Carbon::now()->addHours(2)
         ]);
         return $uploaded;
     }

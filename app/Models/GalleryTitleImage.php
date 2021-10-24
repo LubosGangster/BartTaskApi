@@ -4,8 +4,9 @@
 namespace App\Models;
 
 
-class Gallery
+class GalleryTitleImage
 {
     public $path;
+    public $image;
     public $name;
 }

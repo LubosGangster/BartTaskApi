@@ -3,26 +3,30 @@ Spúšťa sa príkazom "php -S localhost:{ľubovoľný dostupný port napr. 8000
 Keďže nebolo dovoléne použiť databázu, backend API využíva suborový systém na uloženie potrebných dát v priečinku storage.
 
 Dokumentácia k API:
--vylistovanie všetkých galérii (plus práve jeden obrázok, ak galéria má aspoň jeden obrázok) - GET http://localhost:8000/api/gallery
+- vylistovanie všetkých galérii (plus práve jeden obrázok, ak galéria má aspoň jeden obrázok) - GET http://localhost:8000/api/gallery
 
--vytvorenie novej galérii - POST http://localhost:8000/api/gallery
+- vytvorenie novej galérii - POST http://localhost:8000/api/gallery
 
--vylistovanie všetkých obrázkov danej galérie - GET http://localhost:8000/api/gallery/{path}
+- vylistovanie všetkých obrázkov danej galérie - GET http://localhost:8000/api/gallery/{path}
 
--nahratie obrázka - POST http://localhost:8000/api/gallery/{path} ... vo form data je potrebné nahrať daný obrázok s key - "image"
+- nahratie obrázka - POST http://localhost:8000/api/gallery/{path} ... vo form data je potrebné nahrať daný obrázok s key - "image", 
+  taktiež je potrebné pridať autorizačnú hlavičku s tokenom
 
--vymazanie galérii - DELETE http://localhost:8000/api/gallery/{path} ... vymaže galériu a všetky jej obrázky
+- vymazanie galérii - DELETE http://localhost:8000/api/gallery/{path} ... vymaže galériu a všetky jej obrázky
 
--vymazanie obrázka - DELETE http://localhost:8000/api/gallery/{fullPathOfImage} ... vymazanie konkrétneho obrázka, nutné použiť plnú cestu (čiže aj galériu)
+- vymazanie obrázka - DELETE http://localhost:8000/api/gallery/{fullPathOfImage} ... vymazanie konkrétneho obrázka, nutné použiť plnú cestu (čiže aj galériu)
 
--generovanie daného obrázka - GET http://localhost:8000/api/images/{width}x{height}/{fullPathOfImage}
+- generovanie daného obrázka - GET http://localhost:8000/api/images/{width}x{height}/{fullPathOfImage}
 
 BONUSOVÁ ÚLOHA
 
-- endpoint na upload fotky s autentifikáciou - POST http://localhost:8000/api/gallery/auth/{path} ... vo form data je potrebné nahrať daný obrázok s key - "image"
+- ak používateľ nepridal autorizačnú hlavičku s tokenom, API neuploadne fotku a vráti error status 401
 
-- ak je testovaci user prihláseny, uloží fotku na disk do priečinka storage/app/auth/images/{path}/{id_usera} 
+- fotky sa ukladajú na disk, kde k názvu daného obrázka sa pridá používateľove ID napr. obrazok-{ID}.jpg
 
-- ak nie je prihlásený, API vráti json v ktorom je link na prihlásenie
+NIEČO NAVIAC
 
-- obrázky ktoré su uploadnuté prihláseným používateľom nie su zahrnuté v niektorých endpointoch (vymazanie obrázka a generovanie)
+- get request na vylistovanie galerii som vylepšil o filter pomocou limitu, čiže ak chceme filtrovať galerie potrebný parameter je limit,
+ voliteľný parameter je page (defaultne 1, taktiež hodnotu 1 má ak na vstupe API dostane nevalidnú hodnotu page). 
+ 
+ - Napr. ak použijeme GET http://localhost:8000/api/gallery?limit=3&page=1 ..API nám vráti 3 galérie na prvej strane.

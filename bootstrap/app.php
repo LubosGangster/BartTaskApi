@@ -76,13 +76,13 @@ $app->configure('app');
 |
 */
 
-// $app->middleware([
-//     App\Http\Middleware\ExampleMiddleware::class,
-// ]);
+$app->routeMiddleware([
+     'remove_id' => App\Http\Middleware\AfterMiddleware::class,
+]);
 
-//$app->routeMiddleware([
-//    'facebook' => App\Http\Middleware\ExampleMiddleware::class,
-//]);
+$app->routeMiddleware([
+    'facebook' => App\Http\Middleware\FacebookMiddleware::class
+]);
 
 /*
 |--------------------------------------------------------------------------
